@@ -1,0 +1,41 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Calibri;}}
+\fs24
+\b APB UART IP Micro-Architecture\b0\par
+\par
+\b 1. Module Partitioning\b0\par
+The APB UART IP is split into modular RTL blocks:\par
+- \b apb_uart_top\b0 : top wrapper that instantiates and connects all submodules.\par
+- \b uart_ctrl_apb\b0 : APB register/control logic (DATA/STATUS/CTRL/BAUD).\par
+- \b uart_tx\b0 : UART transmitter state machine and serial output generation.\par
+- \b uart_rx\b0 : UART receiver state machine and byte reconstruction.\par
+- \b uart_fifo\b0 : external reusable FIFO module used for TX FIFO and RX FIFO.\par
+- \b apb_uart\b0 : compatibility wrapper around apb_uart_top.\par
+\par
+\b 2. External Interface\b0\par
+APB: pclk, presetn, psel, penable, pwrite, paddr, pwdata, prdata, pready, pslverr.\par
+UART: uart_tx, uart_rx.\par
+Flow control: cts_i, rts_o.\par
+Interrupt: irq.\par
+\par
+\b 3. Register Map (uart_ctrl_apb)\b0\par
+0x00 DATA: write TX byte, read RX byte.\par
+0x04 STATUS: FIFO flags/levels and flow-control visibility.\par
+0x08 CTRL: uart_en, tx_en, rx_en, irq_en.\par
+0x0C BAUD: baud_div (zero ignored).\par
+\par
+\b 4. Data Path\b0\par
+- APB writes feed TX FIFO through uart_ctrl_apb.\par
+- uart_tx pops TX FIFO when cts_i is asserted and serializes 8N1 frame on uart_tx.\par
+- uart_rx deserializes uart_rx into bytes and pushes RX FIFO when valid.\par
+- APB reads pop RX FIFO through uart_ctrl_apb.\par
+\par
+\b 5. Flow Control\b0\par
+- cts_i gates TX frame launch in uart_tx.\par
+- rts_o is generated in top wrapper from RX FIFO occupancy (headroom-based threshold).\par
+\par
+\b 6. Clock/Reset and IRQ\b0\par
+- Shared baud generator in top wrapper drives uart_tx and uart_rx baud_tick.\par
+- Active-low reset initializes control registers, FIFOs, and FSM states.\par
+- irq is generated in uart_ctrl_apb from FIFO status and irq_en.\par
+}
