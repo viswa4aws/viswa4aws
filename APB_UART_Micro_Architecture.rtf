@@ -1,0 +1,54 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Calibri;}}
+\fs24
+\b APB UART Micro-Architecture\b0\par
+\par
+\b 1. Overview\b0\par
+This document describes the APB UART RTL architecture implemented in apb_uart.sv. The block provides an APB slave interface to a UART transmitter/receiver with independent TX and RX FIFOs and RTS/CTS hardware flow control.\par
+\par
+\b 2. Top-Level Interfaces\b0\par
+\b APB slave:\b0  pclk, presetn, psel, penable, pwrite, paddr[7:0], pwdata[31:0], prdata[31:0], pready, pslverr.\par
+\b UART:\b0  uart_tx, uart_rx.\par
+\b Flow control:\b0  cts_i (input), rts_o (output).\par
+\b Interrupt:\b0  irq.\par
+\par
+\b 3. Register Map\b0\par
+\b 0x00 DATA\b0  \tab Write: push TX FIFO byte (pwdata[7:0]). Read: pop RX FIFO byte.\par
+\b 0x04 STATUS\b0\tab [0] tx_full, [1] tx_empty, [2] rx_full, [3] rx_empty, [4] cts_i, [5] rts_o, [15:8] tx_level, [23:16] rx_level.\par
+\b 0x08 CTRL\b0\tab [0] uart_en, [1] tx_en, [2] rx_en, [3] irq_en.\par
+\b 0x0C BAUD\b0\tab [15:0] baud_div.\par
+\par
+\b 4. FIFO Subsystem\b0\par
+Two instances of a reusable synchronous FIFO are used:\par
+- TX FIFO: APB writes enqueue bytes for UART transmission.\par
+- RX FIFO: UART receiver enqueues bytes for APB reads.\par
+\par
+FIFO behavior:\par
+- Parameterizable depth and data width.\par
+- Concurrent push/pop support.\par
+- Exposes full/empty flags and occupancy level.\par
+\par
+\b 5. UART TX Datapath\b0\par
+TX state machine states: TX_IDLE, TX_START, TX_DATA, TX_STOP.\par
+- TX starts only when UART/TX are enabled, TX FIFO is non-empty, and cts_i is asserted.\par
+- One byte is popped from TX FIFO and serialized as 8N1 format.\par
+\par
+\b 6. UART RX Datapath\b0\par
+RX state machine states: RX_IDLE, RX_START, RX_DATA, RX_STOP.\par
+- Detects start bit, shifts in 8 data bits, validates stop bit, then pushes byte to RX FIFO if space is available.\par
+\par
+\b 7. Flow Control\b0\par
+- cts_i gates TX frame launch in TX_IDLE (remote receiver ready).\par
+- rts_o is asserted when RX FIFO has headroom (rx_level < FIFO_DEPTH-2), indicating local receiver readiness.\par
+\par
+\b 8. Reset and Clocking\b0\par
+- Active-low reset (presetn) clears control state, baud counter, UART state machines, and FIFO pointers/counters.\par
+- A programmable baud divider generates baud_tick used by both TX and RX paths.\par
+\par
+\b 9. Interrupt\b0\par
+irq = irq_en AND (not rx_empty OR rx_full OR tx_full).\par
+\par
+\b 10. Notes\b0\par
+- Implementation is compact and synthesizable.\par
+- RX sampling is simplified (baud-tick-based) and can be enhanced with oversampling for higher jitter tolerance.\par
+}
